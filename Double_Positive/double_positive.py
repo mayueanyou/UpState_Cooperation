@@ -158,7 +158,9 @@ class DoublePositive:
     
     def generate_mask(self):
         for i in tqdm(range(self.image_shape[0])):
+            if torch.sum(self.denoised_double_positive[i]) == 0: continue
             for j in range(self.image_shape[1]):
+                if torch.sum(self.denoised_double_positive[i][j]) == 0: continue
                 for k in range(self.image_shape[2]):
                     if self.denoised_double_positive[i][j][k] > 0:
                         if self.keypoint_mask_register[i][j][k] == 1: continue
@@ -179,7 +181,9 @@ class DoublePositive:
         while True:
             complete = True
             for i in tqdm(range(self.image_shape[0])):
+                if torch.sum(self.raw_double_positive[i]) == 0: continue
                 for j in range(self.image_shape[1]):
+                    if torch.sum(self.raw_double_positive[i][j]) == 0: continue
                     for k in range(self.image_shape[2]):
                         if self.raw_double_positive[i][j][k] > 0 and self.final_mask[i][j][k] == 0:
                             mask_val = self.check_surranding_3d(self.keypoint_mask, i, j, k)
@@ -227,7 +231,9 @@ class DoublePositive:
         x,y,z,c,s = [],[],[],[],[]
 
         for i in tqdm(range(self.image_shape[0])):
+            if torch.sum(self.final_mask[i]) == 0: continue
             for j in range(self.image_shape[1]):
+                if torch.sum(self.final_mask[i][j]) == 0: continue
                 for k in range(self.image_shape[2]):
                     if self.final_mask[i][j][k] != 0:
                         x.append(j)
@@ -247,6 +253,7 @@ class DoublePositive:
         ax.scatter(x, y, z, c=c, cmap='viridis', s=s)
         plt.axis('off')
         plt.show()
+    
 
 def main2():
     # set_list = ["Set 1","Set 2","Set 3","Set 4"]
@@ -276,9 +283,10 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-p','--path', type=str)
-    parser.add_argument('-pt','--positive_threshold', type=float, default=0.05)
-    parser.add_argument('-ct','--cluster_threshold', type=int, default=20)
-    args = parser.parse_args()
-    main(args)
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('-p','--path', type=str)
+    # parser.add_argument('-pt','--positive_threshold', type=float, default=0.05)
+    # parser.add_argument('-ct','--cluster_threshold', type=int, default=20)
+    # args = parser.parse_args()
+    # main(args)
+    main2()

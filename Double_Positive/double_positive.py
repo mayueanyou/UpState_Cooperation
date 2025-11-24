@@ -1,7 +1,5 @@
-import os,sys,torch,re
-import numpy as np
+import os,sys,torch,re,argparse
 import pandas as pd
-import python_lib as pyl
 from pathlib import Path
 from torchvision import transforms
 from PIL import Image,ImageOps 
@@ -27,6 +25,10 @@ class DoublePositive:
         self.positive_threshold = positive_threshold
     
     def load_images(self,file_path):
+        def natural_sort_key(s):
+            s = str(s)
+            return [int(text) if text.isdigit() else text.lower()for text in re.split(r'(\d+)', s)]
+        
         path = Path(file_path)
         file_list = []
         for item in path.iterdir():
@@ -122,8 +124,6 @@ class DoublePositive:
                     if self.validate_index(ni, nj, nk):
                         if self.raw_double_positive[ni][nj][nk] != 0 and self.keypoint_mask_register[ni][nj][nk] == 0:
                             self.recusive_label(ni, nj, nk, label)
-    
-    
 
     def check_surranding_3d(self, mix_mask, i, j, k):
         for di in [-1, 0, 1]:
@@ -219,16 +219,6 @@ class DoublePositive:
         print("Counting statistics...")
         self.count_statistics()
     
-    def plot_mask(self):
-        fig, axes = plt.subplots(3, 8)
-        if self.final_mask.shape[0] == 1:
-            axes = [axes]
-        mask = self.final_mask.cpu().numpy()
-        for idx in range(mask.shape[0]):
-            plt.imsave(f'images/my_imsave_image_{idx}.png', mask[idx], cmap='nipy_spectral')
-        #plt.tight_layout()
-        #plt.show()
-    
     def plot_3d(self):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
@@ -256,64 +246,37 @@ class DoublePositive:
         plt.axis('off')
         plt.show()
 
-
-def natural_sort_key(s):
-    # Splits the string into a list of strings and integers
-    # e.g., '10.tif' becomes ['', 10, '.', 'tif']
-    s = str(s)
-    return [int(text) if text.isdigit() else text.lower()
-            for text in re.split(r'(\d+)', s)]
-
-def load_data(file_path):
-    path = Path(file_path)
-    file_list = []
-    for item in path.iterdir():
-        if not item.is_dir(): file_list.append(item)
-    file_list.sort(key=natural_sort_key)
-    
-    tensor_list = []
-    to_tensor = transforms.ToTensor()
-    for file in file_list:
-        img = Image.open(file)
-        img = ImageOps.grayscale(img)
-        img_tensor = to_tensor(img)
-        tensor_list.append(img_tensor)
-    tensor_list = torch.stack(tensor_list)
-    return tensor_list
-
-def load_label(file_path):
-    df = pd.read_csv(file_path, usecols=[7, 8])
-    return torch.tensor(df.values)
-
-
 def main2():
-    #channel2_tensor =  load_data("/home/yue/Desktop/UpState/DoublePositive/Double_positive_count_by_Image_J/Channel2")
-    #channel3_tensor =  load_data("/home/yue/Desktop/UpState/DoublePositive/Double_positive_count_by_Image_J/Channel3")
-    #label_positions = load_label("/home/yue/Desktop/UpState/DoublePositive/Double_positive_count_by_Image_J/Double positive count by Image J.csv")
-    #channel2_tensor =  load_data("/home/yue/Desktop/UpState/DoublePositive/data/Set 1/Group A/Channel 2")
-    #channel3_tensor =  load_data("/home/yue/Desktop/UpState/DoublePositive/data/Set 1/Group A/Channel 3")
-    #label_positions = load_label("/home/yue/Desktop/UpState/DoublePositive/data/Set 1/Group A/Results.csv")
+    # set_list = ["Set 1","Set 2","Set 3","Set 4"]
+    # group_list = ["Group A","Group B","Group C","Group D","Group E"]
+    # for s in tqdm(set_list):
+    #     for g in tqdm(group_list):
+    #         s = 'Set 4'
+    #         g = 'Group A'
+    #         print(f'Processing {s} {g} ...')
+    #         dp = DoublePositive(path=f"/home/yue/Desktop/UpState/DoublePositive/data/{s}/{g}/",positive_threshold=0.05,cluster_threshold=20)
+    #         dp.process()
+    #         dp.save_statistics()
+    #         dp.plot_3d()
+    #         print(f'Finished {s} {g}.\n')
+    #         break
+    #     break
+    dp = DoublePositive(path="/home/yue/Desktop/UpState/DoublePositive/data/Set 4/Group A",positive_threshold=0.05,cluster_threshold=20)
+    dp.process()
+    dp.save_statistics()    
+    dp.plot_3d()
 
-    #dp = DoublePositive(path="/home/yue/Desktop/UpState/DoublePositive/data/Set 1/Group A/",threshold=30)
-    set_list = ["Set 1","Set 2","Set 3","Set 4"]
-    group_list = ["Group A","Group B","Group C","Group D","Group E"]
-    for s in tqdm(set_list):
-        for g in tqdm(group_list):
-            s = 'Set 4'
-            g = 'Group A'
-            print(f'Processing {s} {g} ...')
-            dp = DoublePositive(path=f"/home/yue/Desktop/UpState/DoublePositive/data/{s}/{g}/",positive_threshold=0.05,cluster_threshold=20)
-            dp.process()
-            dp.save_statistics()
-            dp.plot_3d()
-            print(f'Finished {s} {g}.\n')
-            break
-        break
-    # dp = DoublePositive(path="/home/yue/Desktop/UpState/DoublePositive/data/Test/",threshold=30)
-    # dp.process()
-    # dp.save_statistics()
-    #dp.plot_3d()
-    
+def main(args):
+    dp = DoublePositive(path=args.path, positive_threshold=args.positive_threshold, cluster_threshold=args.cluster_threshold)
+    dp.process()
+    dp.save_statistics()
+    dp.plot_3d()
+
 
 if __name__ == "__main__":
-    main2()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p','--path', type=str)
+    parser.add_argument('-pt','--positive_threshold', type=float, default=0.05)
+    parser.add_argument('-ct','--cluster_threshold', type=int, default=20)
+    args = parser.parse_args()
+    main(args)

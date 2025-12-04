@@ -66,6 +66,10 @@ class ConnectedComponentLabeling3D:
         print(f'Total Count: {self.total_count}')
         print(f'Total Volume (count-based): {self.total_volume}')
         print(f'Total Volume (weighted): {self.total_volume_weighted}')
+        self.total_volume_normalized = self.total_volume / (self.height * self.width)
+        self.total_volume_weighted_normalized = self.total_volume_weighted / (self.height * self.width)
+        print(f'Total Volume normalized (count-based): {self.total_volume_normalized}')
+        print(f'Total Volume normalized (weighted): {self.total_volume_weighted_normalized}')
     
     def plot_labels(self, ax,label_points=None):
         x, y, z, c, s = [], [], [], [], []
@@ -138,9 +142,6 @@ class PositiveDetection:
                  trible_positive_threshold=0.01,trible_cluster_threshold=20):
         self.path = path
         
-        self.total_volume = 0
-        self.total_volume_weighted = 0
-        self.total_count = 0
         self.label_points = None
         
         self.background_threshold = 1000
@@ -212,43 +213,25 @@ class PositiveDetection:
         
         self.image_shape = self.raw_double_positive.shape
         print(f'Image Shape: {self.image_shape}')
-    
-    def save_data(self, file_path):
-        data = {
-            "raw_double_positive": self.raw_double_positive,
-            "denoised_double_positive": self.denoised_double_positive,
-            "keypoint_mask": self.keypoint_mask,
-            "label": self.label,
-            "keypoint_mask_register": self.keypoint_mask_register,
-            "image_shape": self.image_shape,
-            "final_mask": self.final_mask,
-            "total_count": self.total_count,
-            "total_volume": self.total_volume,
-            "total_volume_weighted": self.total_volume_weighted,
-        }
-        torch.save(data, file_path)
-    
-    def load_data(self, file_path):
-        data = torch.load(file_path)
-        self.raw_double_positive = data["raw_double_positive"]
-        self.denoised_double_positive = data["denoised_double_positive"]
-        self.keypoint_mask = data["keypoint_mask"]
-        self.label = data["label"]
-        self.keypoint_mask_register = data["keypoint_mask_register"]
-        self.image_shape = data["image_shape"]
-        self.final_mask = data["final_mask"]
-        self.total_count = data["total_count"]
-        self.total_volume = data["total_volume"]
-        self.total_volume_weighted = data["total_volume_weighted"]
 
     def save_statistics(self):
-        with open(self.path+"statistics.txt", 'w') as f:
-            f.write(f'Image Shape: {self.image_shape}\n')
-            f.write(f'Total Count: {self.total_count}\n')
-            f.write(f'Total Volume (count-based): {self.total_volume}\n')
-            f.write(f'Total Volume (raw): {self.total_volume_weighted}\n')
-            f.write(f'Total Volume normalized(count-based): {self.total_volume/(self.image_shape[1]*self.image_shape[2])}\n')
-            f.write(f'Total Volume normalized(raw): {self.total_volume_weighted/(self.image_shape[1]*self.image_shape[2])}\n')
+        with open(self.path+"/statistics.txt", 'w') as f:
+            f.write('--- Double Positive Detection Statistics ---\n')
+            f.write(f'Double Positive Threshold: {self.double_positive_threshold}\n')
+            f.write(f'Double Cluster Threshold: {self.double_cluster_threshold}\n\n')
+            f.write(f'Total Count: {self.ccl3d_double.total_count}\n')
+            f.write(f'Total Volume (count-based): {self.ccl3d_double.total_volume}\n')
+            f.write(f'Total Volume (weighted): {self.ccl3d_double.total_volume_weighted}\n')
+            f.write(f'Total Volume normalized (count-based): {self.ccl3d_double.total_volume_normalized}\n')
+            f.write(f'Total Volume normalized (weighted): {self.ccl3d_double.total_volume_weighted_normalized}\n\n')
+            f.write(f'--- Trible Positive Detection Statistics ---\n')
+            f.write(f'Trible Positive Threshold: {self.trible_positive_threshold}\n')
+            f.write(f'Trible Cluster Threshold: {self.trible_cluster_threshold}\n')
+            f.write(f'Total Count: {self.ccl3d_triple.total_count}\n')
+            f.write(f'Total Volume (count-based): {self.ccl3d_triple.total_volume}\n')
+            f.write(f'Total Volume (weighted): {self.ccl3d_triple.total_volume_weighted}\n')
+            f.write(f'Total Volume normalized (count-based): {self.ccl3d_triple.total_volume_normalized}\n')
+            f.write(f'Total Volume normalized (weighted): {self.ccl3d_triple.total_volume_weighted_normalized}\n')
 
     def denoise(self,raw_data,positive_threshold):
         max_val = torch.max(raw_data)
@@ -278,12 +261,14 @@ class PositiveDetection:
         print("Start processing...")
         self.init_data()
         
-        ccl3d_double = ConnectedComponentLabeling3D(self.raw_double_positive,self.denoised_double_positive)
-        ccl3d_double.label_components(self.double_cluster_threshold,self.background_threshold)
-        ccl3d_double.plot_labels(self.ax1,self.label_points)
-        ccl3d_triple = ConnectedComponentLabeling3D(self.raw_triple_positive,self.denoised_triple_positive)
-        ccl3d_triple.label_components(self.trible_cluster_threshold,1000)
-        ccl3d_triple.plot_labels(self.ax2,self.label_points)
+        self.ccl3d_double = ConnectedComponentLabeling3D(self.raw_double_positive,self.denoised_double_positive)
+        self.ccl3d_double.label_components(self.double_cluster_threshold,self.background_threshold)
+        self.ccl3d_double.plot_labels(self.ax1,self.label_points)
+        self.ccl3d_triple = ConnectedComponentLabeling3D(self.raw_triple_positive,self.denoised_triple_positive)
+        self.ccl3d_triple.label_components(self.trible_cluster_threshold,1000)
+        self.ccl3d_triple.plot_labels(self.ax2,self.label_points)
+        self.save_statistics()
+        print("Processing finished.")
         #self.plot_3d()
 
 def main2():

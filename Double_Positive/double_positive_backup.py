@@ -51,6 +51,7 @@ class DoublePositive:
     def init_data(self):
         self.channel_1_tensor = self.load_images(self.path+"/Channel 2")
         self.channel_2_tensor = self.load_images(self.path+"/Channel 3")
+        self.label_points = None
         
         if os.path.exists(self.path+"/Results.csv"):
             self.label_points = self.load_label()
@@ -306,7 +307,7 @@ def main2():
             s = 'Set 4'
             g = 'Group A'
             print(f'Processing {s} {g} ...')
-            dp = DoublePositive(path=f"/home/yue/Desktop/UpState/DoublePositive/data/{s}/{g}/",positive_threshold=0.05,cluster_threshold=20)
+            dp = DoublePositive(path=f"/home/yue/Desktop/UpState/DoublePositive/data/{s}/{g}/",positive_threshold=0.05,cluster_threshold=30)
             dp.process()
             dp.save_statistics()
             dp.plot_3d()

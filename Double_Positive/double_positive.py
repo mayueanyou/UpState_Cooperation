@@ -175,6 +175,8 @@ class DoublePositive:
         self.selected_idx_to_keep = torch.where(self.keypoint_counts >= self.cluster_threshold)[0]
         
         for idx in self.selected_idx_to_remove: self.final_mask[self.keypoint_mask == idx] = 0
+        
+        self.final_points_counts = torch.bincount(self.final_mask.view(-1))
 
 
     def readd_points(self):
@@ -220,8 +222,8 @@ class DoublePositive:
         self.generate_mask()
         print("Removing small clusters...")
         self.remove_small_clusters()
-        print("Re-adding points...")
-        self.readd_points()
+        #print("Re-adding points...")
+        #self.readd_points()
         print("Counting statistics...")
         self.count_statistics()
     
@@ -270,7 +272,7 @@ def main2():
     #         print(f'Finished {s} {g}.\n')
     #         break
     #     break
-    dp = DoublePositive(path="/home/yue/Desktop/UpState/DoublePositive/data/Set 4/Group A",positive_threshold=0.05,cluster_threshold=20)
+    dp = DoublePositive(path="/home/yue/Desktop/UpState/DoublePositive/data/Set 4/Group A",positive_threshold=0.05,cluster_threshold=30)
     dp.process()
     dp.save_statistics()    
     dp.plot_3d()

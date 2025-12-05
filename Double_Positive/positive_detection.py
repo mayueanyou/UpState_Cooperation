@@ -71,7 +71,7 @@ class ConnectedComponentLabeling3D:
         print(f'Total Volume normalized (count-based): {self.total_volume_normalized}')
         print(f'Total Volume normalized (weighted): {self.total_volume_weighted_normalized}')
     
-    def plot_labels(self, ax,label_points=None):
+    def plot_labels(self, ax,label_points=None,title=''):
         x, y, z, c, s = [], [], [], [], []
 
         for i in tqdm(range(self.depth)):
@@ -130,12 +130,13 @@ class ConnectedComponentLabeling3D:
         # set view to front-top (top-down from the front)
         ax.view_init(elev=110, azim=0)
         # add axis labels
-        ax.set_xlabel('Height (pixels)')
-        ax.set_ylabel('Width (pixels)')
-        ax.set_zlabel('Depth (slices)')
+        #ax.set_xlabel('Height (pixels)')
+        #ax.set_ylabel('Width (pixels)')
+        #ax.set_zlabel('Depth (slices)')
         
         # reserve space and draw the title text at the bottom of the figure
-        ax.set_title(f'Positive Detection Results \n Total Count: {self.total_count},\n Total Volume (count-based): {self.total_volume},\n Total Volume (weighted): {self.total_volume_weighted}')
+        #ax.set_title(f'Positive Detection Results \n Total Count: {self.total_count},\n Total Volume (count-based): {self.total_volume},\n Total Volume (weighted): {self.total_volume_weighted}')
+        ax.set_title(title)
 
 class PositiveDetection:
     def __init__(self,path,double_positive_threshold=0.05,double_cluster_threshold=35,
@@ -155,20 +156,16 @@ class PositiveDetection:
         
         self.fig = plt.figure()
         # create two side-by-side 3D subplots by overriding fig.add_subplot so the next two calls create (1,2,1) and (1,2,2)
-        self._orig_add_subplot = self.fig.add_subplot
-        self._subplot_call_count = 0
-        def _add_subplot_override(*args, **kwargs):
-            self._subplot_call_count += 1
-            if self._subplot_call_count == 1:
-                return self._orig_add_subplot(1, 2, 1, **kwargs)
-            elif self._subplot_call_count == 2:
-                return self._orig_add_subplot(1, 2, 2, **kwargs)
-            else:
-                return self._orig_add_subplot(*args, **kwargs)
-        self.fig.add_subplot = _add_subplot_override
+        # self.ax1 = self.fig.add_subplot(2, 3, 1, projection='3d')
+        # self.ax2 = self.fig.add_subplot(2, 3, 2, projection='3d')
+        # self.ax3 = self.fig.add_subplot(2, 3, 3, projection='3d')
+        
+        self.ax1 = self.fig.add_subplot(1, 5, 1)
+        self.ax2 = self.fig.add_subplot(1, 5, 2)
+        self.ax3 = self.fig.add_subplot(1, 5, 3)
+        self.ax4 = self.fig.add_subplot(1, 5, 4, projection='3d')
+        self.ax5 = self.fig.add_subplot(1, 5, 5, projection='3d')
         self.fig.set_size_inches(12, 6)
-        self.ax1 = self.fig.add_subplot(111, projection='3d')
-        self.ax2 = self.fig.add_subplot(111, projection='3d')
     
     def load_images(self,file_path):
         def natural_sort_key(s):
@@ -196,22 +193,48 @@ class PositiveDetection:
         df = pd.read_csv(self.path+"/Results.csv", usecols=[7, 8])
         return torch.tensor(df.values)
 
+    def plot_raw_data(self):
+        self.ax1.set_title('Channel 1 Raw Data')
+        self.ax2.set_title('Channel 2 Raw Data')
+        self.ax3.set_title('Channel 3 Raw Data')
+        channel_1_sum = torch.sum(self.channel_1_tensor,dim=0).squeeze()
+        channel_2_sum = torch.sum(self.channel_2_tensor,dim=0).squeeze()
+        channel_3_sum = torch.sum(self.channel_3_tensor,dim=0).squeeze()
+        channel_1_max = torch.max(channel_1_sum)
+        channel_2_max = torch.max(channel_2_sum)
+        channel_3_max = torch.max(channel_3_sum)
+        channel_1_sum_norm = channel_1_sum / channel_1_max
+        channel_2_sum_norm = channel_2_sum / channel_2_max
+        channel_3_sum_norm = channel_3_sum / channel_3_max
+        
+        channel_1_sum_norm[channel_1_sum_norm>0.1] = 1
+        channel_2_sum_norm[channel_2_sum_norm>0.1] = 1
+        channel_3_sum_norm[channel_3_sum_norm>0.1] = 1
+        
+        self.ax1.imshow(1-channel_1_sum_norm, cmap='gray')
+        self.ax2.imshow(1-channel_2_sum_norm, cmap='gray')
+        self.ax3.imshow(1-channel_3_sum_norm, cmap='gray')
+        #print(channel_3_sum_norm)
+        #input()
+
     def init_data(self):
-        self.channel_1_tensor = self.load_images(self.path+"/Channel 2")
-        self.channel_2_tensor = self.load_images(self.path+"/Channel 3")
-        self.channel_3_tensor = self.load_images(self.path+"/Channel 1")
+        self.channel_1_tensor = self.load_images(self.path+"/Channel 1")
+        self.channel_2_tensor = self.load_images(self.path+"/Channel 2")
+        self.channel_3_tensor = self.load_images(self.path+"/Channel 3")
+        self.plot_raw_data()
         
         if os.path.exists(self.path+"/Results.csv"):
             self.label_points = self.load_label()
             
-        self.raw_double_positive = self.channel_1_tensor * self.channel_2_tensor
+        self.raw_double_positive = self.channel_2_tensor * self.channel_3_tensor
         self.raw_double_positive = self.raw_double_positive.squeeze(1)
-        self.raw_triple_positive = self.raw_double_positive * self.channel_3_tensor.squeeze(1)
+        self.raw_triple_positive = self.raw_double_positive * self.channel_1_tensor.squeeze(1)
         
         self.raw_double_positive, self.denoised_double_positive = self.denoise(self.raw_double_positive, self.double_positive_threshold)
         self.raw_triple_positive, self.denoised_triple_positive = self.denoise(self.raw_triple_positive, self.trible_positive_threshold)
         
         self.image_shape = self.raw_double_positive.shape
+        
         print(f'Image Shape: {self.image_shape}')
 
     def save_statistics(self):
@@ -255,6 +278,7 @@ class PositiveDetection:
     
     def plot_3d(self):
         plt.axis('on')
+        plt.tight_layout()
         plt.show()
 
     def process(self):
@@ -263,13 +287,13 @@ class PositiveDetection:
         
         self.ccl3d_double = ConnectedComponentLabeling3D(self.raw_double_positive,self.denoised_double_positive)
         self.ccl3d_double.label_components(self.double_cluster_threshold,self.background_threshold)
-        self.ccl3d_double.plot_labels(self.ax1,self.label_points)
+        self.ccl3d_double.plot_labels(self.ax4,self.label_points,title='Double Positive Detection')
         self.ccl3d_triple = ConnectedComponentLabeling3D(self.raw_triple_positive,self.denoised_triple_positive)
         self.ccl3d_triple.label_components(self.trible_cluster_threshold,1000)
-        self.ccl3d_triple.plot_labels(self.ax2,self.label_points)
+        self.ccl3d_triple.plot_labels(self.ax5,self.label_points,title='Trible Positive Detection')
         self.save_statistics()
         print("Processing finished.")
-        #self.plot_3d()
+        self.plot_3d()
 
 def main2():
     # set_list = ["Set 1","Set 2","Set 3","Set 4"]

@@ -214,8 +214,6 @@ class PositiveDetection:
         self.ax1.imshow(1-channel_1_sum_norm, cmap='gray')
         self.ax2.imshow(1-channel_2_sum_norm, cmap='gray')
         self.ax3.imshow(1-channel_3_sum_norm, cmap='gray')
-        #print(channel_3_sum_norm)
-        #input()
 
     def init_data(self):
         self.channel_1_tensor = self.load_images(self.path+"/Channel 1")
@@ -293,7 +291,7 @@ class PositiveDetection:
         self.ccl3d_triple.plot_labels(self.ax5,self.label_points,title='Trible Positive Detection')
         self.save_statistics()
         print("Processing finished.")
-        self.plot_3d()
+        #self.plot_3d()
 
 def main2():
     # set_list = ["Set 1","Set 2","Set 3","Set 4"]
